@@ -26,9 +26,11 @@ enum sys_maks {
 void movement_system(ecs_t& ecs) {
   for(int e=0; e<ecs.get_entities_count(); e++) {
     if(ecs.match_mask(e, MOVEMENT_SYSTEM_MASK)) {
-      c_vel* vel = reinterpret_cast<c_vel*>(ecs.get_component(e, C_VELOCITY));
-      c_transform* transform = reinterpret_cast<c_transform*>(ecs.get_component(e, C_TRANSFORM));
-    
+    //   c_vel* vel = reinterpret_cast<c_vel*>(ecs.get_component(e, C_VELOCITY));
+    //   c_transform* transform = reinterpret_cast<c_transform*>(ecs.get_component(e, C_TRANSFORM));
+      c_vel* vel = ecs.get_component<c_vel>(e);
+      c_transform* transform = ecs.get_component<c_transform>(e);
+
       transform->x += vel->dx;
       transform->y += vel->dy;
     }
@@ -40,8 +42,8 @@ int main() {
 
   ecs.register_system(MOVEMENT_SYSTEM_MASK);
 
-  ecs.register_component(C_VELOCITY, sizeof(c_vel));
-  ecs.register_component(C_TRANSFORM, sizeof(c_transform));
+  ecs.register_component<c_vel>();
+  ecs.register_component<c_transform>();
   
   size_t player = ecs.create_entity();
   c_vel vel = {
@@ -54,12 +56,12 @@ int main() {
     .y = 0
   };
 
-  ecs.add_component(player, &vel, C_VELOCITY);
-  ecs.add_component(player, &transform, C_TRANSFORM);
+  ecs.add_component<c_vel>(player, vel);
+  ecs.add_component<c_transform>(player, transform);
 
   movement_system(ecs);
-  
-  c_transform* tr = reinterpret_cast<c_transform*>(ecs.get_component(player, C_TRANSFORM));
+
+  c_transform* tr = ecs.get_component<c_transform>(player);
   std::cout <<  tr->x << " " << tr->y << "\n";
 
   return 0;
