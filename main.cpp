@@ -24,17 +24,28 @@ enum sys_maks {
 };
 
 void movement_system(ecs_t& ecs) {
-  for(int e=0; e<ecs.get_entities_count(); e++) {
-    if(ecs.match_mask(e, MOVEMENT_SYSTEM_MASK)) {
-    //   c_vel* vel = reinterpret_cast<c_vel*>(ecs.get_component(e, C_VELOCITY));
-    //   c_transform* transform = reinterpret_cast<c_transform*>(ecs.get_component(e, C_TRANSFORM));
-      c_vel* vel = ecs.get_component<c_vel>(e);
-      c_transform* transform = ecs.get_component<c_transform>(e);
+  // for(int e=0; e<ecs.get_entities_count(); e++) {
+  //   if(ecs.match_mask(e, MOVEMENT_SYSTEM_MASK)) {
+  //     c_vel* vel = ecs.get_component<c_vel>(e);
+  //     c_transform* transform = ecs.get_component<c_transform>(e);
 
-      transform->x += vel->dx;
-      transform->y += vel->dy;
+  //     transform->x += vel->dx;
+  //     transform->y += vel->dy;
+  //   }
+  // }
+  auto& target_mask = ecs.get_sys_mask(MOVEMENT_SYSTEM_MASK);
+  for(auto& [mask, group]: ecs.get_mask_groups()) {
+    if((mask & target_mask) == target_mask) {
+      for(size_t e: group) {
+        c_vel* vel = ecs.get_component<c_vel>(e);
+        c_transform* transform = ecs.get_component<c_transform>(e);
+
+        transform->x += vel->dx;
+        transform->y += vel->dy;     
+      }
     }
   }
+
 }
 
 int main() {
