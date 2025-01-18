@@ -7,7 +7,10 @@
 #include <cstring>
 #include <iostream>
 #include <stdarg.h>
+#include <tuple>
+#include <type_traits>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 using c_type = size_t;
@@ -19,9 +22,9 @@ using c_type = size_t;
 /*
   TODO:
   1. Make sparse sets                           DONE
-  2. Make systems via lambda functions
+  2. Make systems via lambda functions          DONE
   3. Make components pool via polymorphism      DONE
-  4. Add groups for masks 
+  4. Add groups for masks                       DONE
   5. Add pages to sparse set
   6. Add smart_pointers
 */ 
@@ -76,6 +79,66 @@ public:
   
     return &dense_[idx];
   }
+
+  CType& get_ref(size_t e_id) {
+    size_t idx = sparse_[e_id];
+    // if(idx == NULLVAL) return nullptr;
+  
+    return dense_[idx];
+  }
+};
+
+template<typename... Ts>
+struct type_list_t {
+  using type_tuple = std::tuple<Ts...>;
+  
+  template<size_t Idx>
+  using selected_type = std::tuple_element_t<Idx, type_tuple>;
+};
+
+template<typename... Cs>
+class view_t {
+private:
+  using type_lst = type_list_t<Cs...>;
+
+  std::array<i_sparse_set_t*, sizeof...(Cs)> components_;
+  std::unordered_map<std::bitset<MAX_COMPONENTS>, std::vector<size_t>>* mask_groups_;
+  std::bitset<MAX_COMPONENTS> target_mask_;
+  
+  template<size_t Idx>
+  auto get_pool_by_idx() {
+    using c_type = typename type_lst::template selected_type<Idx>;
+    return static_cast<sparse_set_t<c_type>*>(components_[Idx]);
+  }
+
+  template<size_t... Is>
+  auto make_c_tuple(size_t e_id, std::index_sequence<Is...>) {
+    return std::make_tuple((std::ref(get_pool_by_idx<Is>()->get_ref(e_id)))...);
+  }
+
+public:
+
+  view_t(
+    std::array<i_sparse_set_t*, sizeof...(Cs)>&& cs,
+    std::unordered_map<std::bitset<MAX_COMPONENTS>, std::vector<size_t>>* mg,
+    std::bitset<MAX_COMPONENTS> tm
+  ): components_(cs), mask_groups_(mg), target_mask_(tm) {}
+  
+  template<typename Fn>
+  void for_each(Fn func) {
+    auto idxs = std::make_index_sequence<sizeof...(Cs)>();
+
+    for(auto& [mask, group]: *mask_groups_) {
+      if((mask & target_mask_) == target_mask_) {
+        for(size_t e_id: group) {
+          if constexpr (std::is_invocable_v<Fn, Cs&...>) {
+            std::apply(func, make_c_tuple(e_id, idxs));
+          }
+        }
+      }
+    }
+  }
+
 };
 
 class ecs_t {
@@ -87,6 +150,24 @@ private:
   std::vector<std::bitset<MAX_COMPONENTS>> system_mask_;
 
   std::unordered_map<std::bitset<MAX_COMPONENTS>, std::vector<size_t>> mask_groups_;
+
+  template<typename CType>
+  i_sparse_set_t* get_component_pool() {
+    size_t idx = get_c_id<CType>();
+    return components_[idx];
+  }
+
+  template<typename CType>
+  void set_bit(std::bitset<MAX_COMPONENTS>& mask) {
+    mask[get_c_id<CType>()] = true;
+  }
+
+  template<typename... Cs>
+  std::bitset<MAX_COMPONENTS> get_c_mask() {
+    std::bitset<MAX_COMPONENTS> mask;
+    (set_bit<Cs>(mask), ...);
+    return mask;
+  }
 
 public:
   ecs_t() {
@@ -156,6 +237,11 @@ public:
     mask_groups_[{}].push_back(entity_count_);
     return entity_count_++;
   }
+
+  template<typename... Cs>
+  view_t<Cs...> get_view() {
+    std::bitset<MAX_COMPONENTS> mask = get_c_mask<Cs...>();
+    return view_t<Cs...>{ {get_component_pool<Cs>()...}, &mask_groups_, mask };
+  }
+
 };
-
-

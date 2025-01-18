@@ -48,6 +48,11 @@ void movement_system(ecs_t& ecs) {
 
 }
 
+auto movement_sys = ([](c_vel* vel, c_transform* transform) {
+  transform->x += vel->dx;
+  transform->y += vel->dy;
+});
+
 int main() {
   ecs_t ecs;
 
@@ -70,7 +75,13 @@ int main() {
   ecs.add_component<c_vel>(player, vel);
   ecs.add_component<c_transform>(player, transform);
 
-  movement_system(ecs);
+  // movement_system(ecs);
+  
+  auto v = ecs.get_view<c_vel, c_transform>();
+  v.for_each([](c_vel& vel, c_transform& tr) {
+    tr.x += vel.dx;
+    tr.y += vel.dy;
+  });
 
   c_transform* tr = ecs.get_component<c_transform>(player);
   std::cout <<  tr->x << " " << tr->y << "\n";
