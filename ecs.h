@@ -19,16 +19,6 @@ using c_type = size_t;
 #define MAX_ENTITIES    1024
 #define NULLVAL         MAX_ENTITIES+1
 
-/*
-  TODO:
-  1. Make sparse sets                           DONE
-  2. Make systems via lambda functions          DONE
-  3. Make components pool via polymorphism      DONE
-  4. Add groups for masks                       DONE
-  5. Add pages to sparse set
-  6. Add smart_pointers
-*/ 
-
 class i_sparse_set_t {
 public:
   virtual ~i_sparse_set_t() = default;
@@ -82,7 +72,6 @@ public:
 
   CType& get_ref(size_t e_id) {
     size_t idx = sparse_[e_id];
-    // if(idx == NULLVAL) return nullptr;
   
     return dense_[idx];
   }
@@ -169,18 +158,6 @@ private:
     return mask;
   }
 
-public:
-  ecs_t() {
-    mask_groups_[{}] = {};
-  }
-
-  size_t get_entities_count() { return entity_count_; }
-  std::bitset<MAX_COMPONENTS>& 
-    get_sys_mask(size_t sys_id) { return system_mask_[sys_id]; }
-
-  std::unordered_map<std::bitset<MAX_COMPONENTS>, std::vector<size_t>>&
-    get_mask_groups() { return mask_groups_; }
-    
   inline size_t get_c_id() {
     static size_t id = 0;
     return id++;
@@ -192,14 +169,28 @@ public:
     return id;
   }
 
+  bool match_mask(size_t e_id, size_t sys_id) {
+    if((entity_mask_[e_id] & system_mask_[sys_id]) == system_mask_[sys_id])
+      return true;
+
+    return false;
+  }
+
+public:
+  ecs_t() {
+    mask_groups_[{}] = {};
+  }
+
+  size_t get_entities_count() { return entity_count_; }
+  std::bitset<MAX_COMPONENTS>& 
+    get_sys_mask(size_t sys_id) { return system_mask_[sys_id]; }
+
+  std::unordered_map<std::bitset<MAX_COMPONENTS>, std::vector<size_t>>&
+    get_mask_groups() { return mask_groups_; }
+
   template<typename CType>
   void register_component() {
     components_[get_c_id<CType>()] = new sparse_set_t<CType>;
-  }
-  
-  template<typename... Types>
-  void register_system(size_t sys_id, Types... types) {
-    system_mask_.push_back({types...});
   }
   
   template<typename CType>
@@ -217,13 +208,6 @@ public:
       mask_groups_[e_mask] = {};
     }
     mask_groups_[e_mask].push_back(e_id);
-  }
-
-  bool match_mask(size_t e_id, size_t sys_id) {
-    if((entity_mask_[e_id] & system_mask_[sys_id]) == system_mask_[sys_id])
-      return true;
-
-    return false;
   }
   
   template<typename CType>

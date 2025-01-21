@@ -1,6 +1,6 @@
 #include <iostream>
 
-#include "ecs.h"
+#include "ecs2.h"
 
 struct c_vel {
   float dx, dy;
