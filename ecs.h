@@ -228,4 +228,10 @@ public:
     return view_t<Cs...>{ {get_component_pool<Cs>()...}, &mask_groups_, mask };
   }
 
+  template<typename... Cs, typename Fn>
+  void for_each(Fn func) {
+    auto view = get_view<Cs...>();
+    view.for_each(func);
+  }
+
 };
